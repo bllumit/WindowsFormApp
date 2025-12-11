@@ -1,0 +1,1662 @@
+@model string
+
+<div id="fileManagerModal" class="file-manager-modal" style="display:none;">
+    <div class="file-manager-overlay" onclick="closeFileManager()"></div>
+    <div class="file-manager-container">
+        <div class="file-manager-header">
+            <h3>Dosya Yöneticisi</h3>
+            <button class="close-btn" onclick="closeFileManager()">×</button>
+        </div>
+
+        <div class="file-manager-toolbar">
+            <button class="btn-primary" onclick="showCreateFolderDialog()">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M.5 3l.5.5V11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4.5l.5-.5h-15zM2 4h12v7H2V4z" />
+                    <path d="M8 5.5a.5.5 0 0 1 .5.5v1.5H10a.5.5 0 0 1 0 1H8.5V10a.5.5 0 0 1-1 0V8.5H6a.5.5 0 0 1 0-1h1.5V6a.5.5 0 0 1 .5-.5z" />
+                </svg>
+                Yeni Klasör
+            </button>
+
+            <button class="btn-primary" onclick="showUploadDialog()">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z" />
+                    <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z" />
+                </svg>
+                Dosya Yükle
+            </button>
+        </div>
+
+        <div class="file-manager-breadcrumb">
+            <span class="breadcrumb-item" onclick="navigateToFolder('')">Ana Dizin</span>
+            <span id="breadcrumbPath"></span>
+        </div>
+
+        <div class="file-manager-content">
+            <div class="folders-section">
+                <h4>Klasörler</h4>
+                <div id="foldersList" class="folders-list"></div>
+            </div>
+
+            <div class="files-section">
+                <h4>Dosyalar</h4>
+                <div id="filesList" class="files-grid"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="loading-overlay" style="display:none;">
+    <div class="loading-spinner">
+        <div class="spinner"></div>
+        <p>Yükleniyor...</p>
+    </div>
+</div>
+
+<div id="createFolderDialog" class="dialog" style="display:none;">
+    <div class="dialog-overlay" onclick="closeCreateFolderDialog()"></div>
+    <div class="dialog-content">
+        <h4>Yeni Klasör Oluştur</h4>
+        <div class="form-group">
+            <label>Klasör Adı</label>
+            <input type="text" id="newFolderName" class="form-input" placeholder="Klasör adını girin..." />
+        </div>
+        <div class="dialog-actions">
+            <button class="btn-secondary" onclick="closeCreateFolderDialog()">İptal</button>
+            <button class="btn-primary" onclick="createFolder()">Oluştur</button>
+        </div>
+    </div>
+</div>
+
+<div id="uploadDialog" class="dialog" style="display:none;">
+    <div class="dialog-overlay" onclick="closeUploadDialog()"></div>
+    <div class="dialog-content upload-dialog">
+        <h4>Dosya Yükle</h4>
+        <div class="form-group">
+            <div id="dropZone" class="drop-zone">
+                <svg width="48" height="48" fill="#9ca3af" viewBox="0 0 16 16">
+                    <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z" />
+                    <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z" />
+                </svg>
+                <p>Dosyaları buraya sürükleyin veya tıklayarak seçin</p>
+                <p class="drop-zone-hint">Desteklenen formatlar: JPG, PNG, PDF, MP4, Excel, Word</p>
+                <input type="file" id="fileInput" multiple style="display:none;" />
+            </div>
+            <div id="filePreview" class="file-preview"></div>
+        </div>
+        <div class="dialog-actions">
+            <button class="btn-secondary" onclick="closeUploadDialog()">İptal</button>
+            <button class="btn-primary" onclick="uploadFiles()">Yükle</button>
+        </div>
+    </div>
+</div>
+
+<div id="deleteConfirmDialog" class="dialog" style="display:none;">
+    <div class="dialog-overlay" onclick="closeDeleteConfirmDialog()"></div>
+    <div class="dialog-content delete-confirm">
+        <div class="delete-icon">
+            <svg width="48" height="48" fill="#ef4444" viewBox="0 0 16 16">
+                <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z" />
+                <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4L4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z" />
+            </svg>
+        </div>
+        <h4>Silme Onayı</h4>
+        <p id="deleteConfirmMessage">Bu öğeyi silmek istediğinizden emin misiniz?</p>
+        <div class="dialog-actions">
+            <button class="btn-secondary" onclick="closeDeleteConfirmDialog()">İptal</button>
+            <button class="btn-danger" onclick="confirmDelete()">Evet, Sil</button>
+        </div>
+    </div>
+</div>
+
+<!-- Success Dialog -->
+<div id="successDialog" class="dialog" style="display:none;">
+    <div class="dialog-overlay" onclick="closeSuccessDialog()"></div>
+    <div class="dialog-content success-dialog">
+        <div class="success-icon">
+            <svg width="64" height="64" fill="#10b981" viewBox="0 0 16 16">
+                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+            </svg>
+        </div>
+        <h4 id="successTitle">İşlem Başarılı</h4>
+        <p id="successMessage">İşlem başarıyla tamamlandı.</p>
+        <div class="dialog-actions">
+            <button class="btn-primary" onclick="closeSuccessDialog()">Tamam</button>
+        </div>
+    </div>
+</div>
+
+<!-- Image Viewer Dialog -->
+<div id="imageViewerDialog" class="dialog" style="display:none;">
+    <div class="dialog-overlay" onclick="closeImageViewer()"></div>
+    <div class="dialog-content image-viewer-dialog">
+        <div class="image-viewer-header">
+            <h4 id="imageViewerTitle">Görsel Görüntüleyici</h4>
+            <button class="close-btn" onclick="closeImageViewer()">×</button>
+        </div>
+        <div class="image-viewer-content">
+            <img id="imageViewerImage" src="" alt="Görsel" />
+        </div>
+        <div class="image-viewer-info">
+            <span id="imageViewerDimensions"></span>
+        </div>
+    </div>
+</div>
+
+<div id="imageActionDialog" class="dialog" style="display:none;">
+    <div class="dialog-overlay" onclick="closeImageActionDialog()"></div>
+    <div class="dialog-content image-editor-dialog">
+        <h4>Görsel İşlemleri</h4>
+        <input type="hidden" id="currentImagePath" />
+
+        <div class="editor-container">
+            <div class="editor-canvas-wrapper" id="editorCanvasWrapper">
+                <img id="editorImage" src="" style="max-width: 100%; display: block;" />
+                <div id="cropOverlay" class="crop-overlay" style="display:none;"></div>
+                <div id="cropBox" class="crop-box" style="display:none;">
+                    <div class="crop-handle" data-position="nw"></div>
+                    <div class="crop-handle" data-position="ne"></div>
+                    <div class="crop-handle" data-position="sw"></div>
+                    <div class="crop-handle" data-position="se"></div>
+                    <div class="crop-handle" data-position="n"></div>
+                    <div class="crop-handle" data-position="s"></div>
+                    <div class="crop-handle" data-position="w"></div>
+                    <div class="crop-handle" data-position="e"></div>
+                </div>
+            </div>
+
+            <div class="editor-controls">
+                <div class="action-section">
+                    <h5>Kırpma (Crop)</h5>
+                    <p class="help-text">Görselin üzerinde fare ile kırpma alanını seçin</p>
+                    <button class="btn-primary btn-block" onclick="startCrop()" id="startCropBtn">Kırpma Modunu Başlat</button>
+                    <button class="btn-primary btn-block" onclick="applyCrop()" id="applyCropBtn" style="display:none;">Kırpmayı Uygula</button>
+                    <button class="btn-secondary btn-block" onclick="cancelCrop()" id="cancelCropBtn" style="display:none;">İptal</button>
+                </div>
+
+                <div class="action-section">
+                    <h5>Yeniden Boyutlandır (Resize)</h5>
+                    <div class="form-row">
+                        <input type="number" id="resizeWidth" placeholder="Genişlik" class="form-input-small" />
+                        <input type="number" id="resizeHeight" placeholder="Yükseklik" class="form-input-small" />
+                    </div>
+                    <button class="btn-primary btn-block" onclick="applyResize()">Boyutlandır</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="dialog-actions">
+            <button class="btn-secondary" onclick="closeImageActionDialog()">Kapat</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .file-manager-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1000;
+    }
+
+    .file-manager-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+    }
+
+    .file-manager-container {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 90%;
+        max-width: 1200px;
+        height: 80%;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .file-manager-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 24px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+        .file-manager-header h3 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 600;
+            color: #111827;
+        }
+
+    .close-btn {
+        background: none;
+        border: none;
+        font-size: 28px;
+        color: #6b7280;
+        cursor: pointer;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+
+        .close-btn:hover {
+            background: #f3f4f6;
+            color: #111827;
+        }
+
+    .file-manager-toolbar {
+        padding: 16px 24px;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        gap: 12px;
+    }
+
+    .btn-primary {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s;
+    }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-primary:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+    .btn-secondary {
+        background: #f3f4f6;
+        color: #374151;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+    .btn-danger {
+        background: #ef4444;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+    .file-manager-breadcrumb {
+        padding: 12px 24px;
+        background: #f9fafb;
+        font-size: 14px;
+        color: #6b7280;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .breadcrumb-item {
+        color: #3b82f6;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+
+        .breadcrumb-item:hover {
+            text-decoration: underline;
+            color: #2563eb;
+        }
+
+    .file-manager-content {
+        flex: 1;
+        padding: 24px;
+        overflow-y: auto;
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 24px;
+    }
+
+    .folders-section h4, .files-section h4 {
+        margin: 0 0 16px 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .folders-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-height: calc(80vh - 300px);
+        overflow-y: auto;
+        padding-right: 8px;
+    }
+
+        .folders-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .folders-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .folders-list::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+
+            .folders-list::-webkit-scrollbar-thumb:hover {
+                background: #a8a8a8;
+            }
+
+    .files-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 16px;
+    }
+
+    .folder-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        background: #f9fafb;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border-left: 3px solid transparent;
+    }
+
+        .folder-item:hover {
+            background: #f3f4f6;
+            transform: translateX(4px);
+        }
+
+        .folder-item.selected {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            border-left: 3px solid #3b82f6;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+        }
+
+            .folder-item.selected:hover {
+                background: linear-gradient(135deg, #bfdbfe 0%, #93c5fd 100%);
+            }
+
+    .file-card {
+        background: #f9fafb;
+        border-radius: 8px;
+        padding: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        flex-direction: column;
+    }
+
+        .file-card:hover {
+            background: #f3f4f6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+    .file-thumb {
+        width: 100%;
+        height: 100px;
+        background: #e5e7eb;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        margin-bottom: 8px;
+    }
+
+        .file-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .file-thumb svg {
+            width: 40px;
+            height: 40px;
+            fill: #6b7280;
+        }
+
+    .file-info {
+        flex: 1;
+    }
+
+    .file-name {
+        font-size: 12px;
+        color: #374151;
+        font-weight: 500;
+        margin-bottom: 4px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .file-actions {
+        display: flex;
+        gap: 4px;
+        margin-top: 8px;
+        flex-wrap: wrap;
+    }
+
+    .item-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 1;
+    }
+
+    .item-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .action-btn {
+        background: none;
+        border: none;
+        padding: 6px;
+        cursor: pointer;
+        color: #6b7280;
+        border-radius: 4px;
+        transition: all 0.2s;
+    }
+
+        .action-btn:hover {
+            background: #e5e7eb;
+            color: #111827;
+        }
+
+    .action-btn-small {
+        background: white;
+        border: 1px solid #d1d5db;
+        padding: 4px 8px;
+        cursor: pointer;
+        color: #6b7280;
+        border-radius: 4px;
+        transition: all 0.2s;
+        font-size: 11px;
+    }
+
+        .action-btn-small:hover {
+            background: #f3f4f6;
+            color: #111827;
+        }
+
+        .action-btn-small.btn-delete {
+            background: #fee2e2;
+            border-color: #fecaca;
+            color: #dc2626;
+        }
+
+            .action-btn-small.btn-delete:hover {
+                background: #fecaca;
+                border-color: #fca5a5;
+                color: #b91c1c;
+            }
+
+        .action-btn-small.btn-select {
+            background: #dbeafe;
+            border-color: #bfdbfe;
+            color: #1d4ed8;
+        }
+
+            .action-btn-small.btn-select:hover {
+                background: #bfdbfe;
+                border-color: #93c5fd;
+                color: #1e40af;
+            }
+
+        .action-btn-small.btn-view {
+            background: #e0e7ff;
+            border-color: #c7d2fe;
+            color: #4338ca;
+        }
+
+            .action-btn-small.btn-view:hover {
+                background: #c7d2fe;
+                border-color: #a5b4fc;
+                color: #3730a3;
+            }
+
+    .dialog {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 2000;
+    }
+
+    .dialog-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+    }
+
+    .dialog-content {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 24px;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        min-width: 400px;
+        max-width: 600px;
+    }
+
+    .upload-dialog {
+        min-width: 500px;
+    }
+
+    .dialog-content h4 {
+        margin: 0 0 20px 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .delete-confirm {
+        text-align: center;
+    }
+
+    .delete-icon {
+        margin-bottom: 16px;
+        animation: shake 0.5s ease-in-out;
+    }
+
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-10px); }
+        75% { transform: translateX(10px); }
+    }
+
+    .delete-confirm h4 {
+        margin-bottom: 12px;
+    }
+
+    .delete-confirm p {
+        color: #6b7280;
+        font-size: 14px;
+        margin-bottom: 24px;
+    }
+
+    .success-dialog {
+        text-align: center;
+        animation: slideInDown 0.3s ease-out;
+    }
+
+    @keyframes slideInDown {
+        from {
+            opacity: 0;
+            transform: translate(-50%, -60%);
+        }
+        to {
+            opacity: 1;
+            transform: translate(-50%, -50%);
+        }
+    }
+
+    .success-icon {
+        margin-bottom: 16px;
+        animation: scaleIn 0.4s ease-out;
+    }
+
+    @keyframes scaleIn {
+        from {
+            transform: scale(0);
+        }
+        to {
+            transform: scale(1);
+        }
+    }
+
+    .success-dialog h4 {
+        margin-bottom: 12px;
+        color: #10b981;
+    }
+
+    .success-dialog p {
+        color: #6b7280;
+        font-size: 14px;
+        margin-bottom: 24px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+        }
+
+    .form-input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+        }
+
+    .drop-zone {
+        border: 2px dashed #d1d5db;
+        border-radius: 8px;
+        padding: 40px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+        .drop-zone:hover {
+            border-color: #3b82f6;
+            background: #f0f9ff;
+        }
+
+        .drop-zone.drag-over {
+            border-color: #3b82f6;
+            background: #dbeafe;
+        }
+
+        .drop-zone p {
+            margin: 12px 0 0 0;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+    .drop-zone-hint {
+        font-size: 12px !important;
+        color: #9ca3af !important;
+    }
+
+    .file-preview {
+        margin-top: 16px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 12px;
+    }
+
+    .preview-item {
+        position: relative;
+        background: #f9fafb;
+        border-radius: 6px;
+        padding: 8px;
+    }
+
+    .preview-thumb {
+        width: 100%;
+        height: 80px;
+        background: #e5e7eb;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        margin-bottom: 6px;
+    }
+
+        .preview-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+    .preview-name {
+        font-size: 11px;
+        color: #6b7280;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .preview-remove {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        background: rgba(239, 68, 68, 0.9);
+        color: white;
+        border: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .dialog-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 24px;
+    }
+
+    .action-section {
+        margin-bottom: 20px;
+        padding: 16px;
+        background: #f9fafb;
+        border-radius: 8px;
+    }
+
+        .action-section h5 {
+            margin: 0 0 12px 0;
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+    .help-text {
+        font-size: 12px;
+        color: #6b7280;
+        margin-bottom: 12px;
+    }
+
+    .form-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .form-input-small {
+        flex: 1;
+        padding: 8px 10px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+
+        .form-input-small:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+    .btn-block {
+        width: 100%;
+        margin-bottom: 8px;
+    }
+
+    .image-editor-dialog {
+        min-width: 800px;
+        max-width: 90vw;
+    }
+
+    .editor-container {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 24px;
+        margin-bottom: 20px;
+    }
+
+    .editor-canvas-wrapper {
+        position: relative;
+        background: #f9fafb;
+        border-radius: 8px;
+        padding: 16px;
+        min-height: 400px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .crop-canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        pointer-events: none;
+    }
+
+    .crop-box {
+        position: absolute;
+        border: 2px dashed #3b82f6;
+        background: rgba(59, 130, 246, 0.1);
+        cursor: move;
+    }
+
+    .crop-handle {
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        background: #3b82f6;
+        border: 2px solid white;
+        border-radius: 50%;
+    }
+
+        .crop-handle[data-position="nw"] {
+            top: -5px;
+            left: -5px;
+            cursor: nw-resize;
+        }
+
+        .crop-handle[data-position="ne"] {
+            top: -5px;
+            right: -5px;
+            cursor: ne-resize;
+        }
+
+        .crop-handle[data-position="sw"] {
+            bottom: -5px;
+            left: -5px;
+            cursor: sw-resize;
+        }
+
+        .crop-handle[data-position="se"] {
+            bottom: -5px;
+            right: -5px;
+            cursor: se-resize;
+        }
+
+        .crop-handle[data-position="n"] {
+            top: -5px;
+            left: 50%;
+            margin-left: -5px;
+            cursor: n-resize;
+        }
+
+        .crop-handle[data-position="s"] {
+            bottom: -5px;
+            left: 50%;
+            margin-left: -5px;
+            cursor: s-resize;
+        }
+
+        .crop-handle[data-position="w"] {
+            top: 50%;
+            left: -5px;
+            margin-top: -5px;
+            cursor: w-resize;
+        }
+
+        .crop-handle[data-position="e"] {
+            top: 50%;
+            right: -5px;
+            margin-top: -5px;
+            cursor: e-resize;
+        }
+
+    .editor-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    /* Loading Overlay */
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 3000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .loading-spinner {
+        text-align: center;
+        color: white;
+    }
+
+    .spinner {
+        width: 60px;
+        height: 60px;
+        margin: 0 auto 20px;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top: 4px solid white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .loading-spinner p {
+        font-size: 16px;
+        font-weight: 500;
+        margin: 0;
+    }
+
+    /* Image Viewer Dialog */
+    .image-viewer-dialog {
+        min-width: 600px;
+        max-width: 90vw;
+        max-height: 90vh;
+    }
+
+    .image-viewer-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .image-viewer-header h4 {
+        margin: 0;
+    }
+
+    .image-viewer-content {
+        max-height: 70vh;
+        overflow: auto;
+        text-align: center;
+        background: #f9fafb;
+        border-radius: 8px;
+        padding: 16px;
+    }
+
+    .image-viewer-content img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 4px;
+    }
+
+    .image-viewer-info {
+        margin-top: 16px;
+        padding: 12px;
+        background: #f3f4f6;
+        border-radius: 8px;
+        text-align: center;
+        font-size: 14px;
+        color: #6b7280;
+        font-weight: 500;
+    }
+</style>
+
+<script>
+    let currentFolder = '';
+    let selectedFiles = [];
+    let deleteTarget = null;
+    let deleteType = null;
+
+    function showLoading() {
+        document.getElementById('loadingOverlay').style.display = 'flex';
+    }
+
+    function hideLoading() {
+        document.getElementById('loadingOverlay').style.display = 'none';
+    }
+
+    function showSuccessDialog(title, message) {
+        document.getElementById('successTitle').textContent = title;
+        document.getElementById('successMessage').textContent = message;
+        document.getElementById('successDialog').style.display = 'block';
+    }
+
+    function closeSuccessDialog() {
+        document.getElementById('successDialog').style.display = 'none';
+    }
+
+    function selectFile(fullPath) {
+        const imageUrlInput = document.getElementById('ImageURL');
+        if (imageUrlInput) {
+            imageUrlInput.value = fullPath;
+            imageUrlInput.dispatchEvent(new Event('input'));
+            closeFileManager();
+        } else {
+            console.error('ImageURL input bulunamadı!');
+            alert('ImageURL input elementi bulunamadı. Lütfen Demo/Index.cshtml içinde id="ImageURL" olan bir input oluşturun.');
+        }
+    }
+
+    function openFileManager() {
+        document.getElementById('fileManagerModal').style.display = 'block';
+        navigateToFolder('');
+    }
+
+    function closeFileManager() {
+        document.getElementById('fileManagerModal').style.display = 'none';
+    }
+
+    async function navigateToFolder(folder) {
+        showLoading();
+        currentFolder = folder;
+        
+        try {
+            await Promise.all([
+                loadFolders(folder),
+                loadFiles(folder)
+            ]);
+            updateBreadcrumb(folder);
+        } finally {
+            hideLoading();
+        }
+    }
+
+    function updateBreadcrumb(folder) {
+        const breadcrumb = document.getElementById('breadcrumbPath');
+        if (!folder) {
+            breadcrumb.innerHTML = '';
+            return;
+        }
+
+        const parts = folder.split('/');
+        let path = '';
+        let html = '';
+
+        parts.forEach((part, index) => {
+            path += (index > 0 ? '/' : '') + part;
+            const currentPath = path;
+            html += ` <span style="color:#6b7280">></span> <span class="breadcrumb-item" onclick="navigateToFolder('${currentPath}')">${part}</span>`;
+        });
+
+        breadcrumb.innerHTML = html;
+    }
+
+    async function loadFolders(path) {
+        const response = await fetch(`/FileManager/GetFolders?path=${encodeURIComponent(path)}`);
+        const result = await response.json();
+
+        const foldersList = document.getElementById('foldersList');
+        foldersList.innerHTML = '';
+
+        if (result.success && result.folders.length > 0) {
+            result.folders.forEach(folder => {
+                const folderPath = path ? `${path}/${folder}` : folder;
+                const isSelected = folderPath === currentFolder;
+
+                const div = document.createElement('div');
+                div.className = 'folder-item' + (isSelected ? ' selected' : '');
+                div.innerHTML = `
+                    <div class="item-info" onclick="navigateToFolder('${folderPath}')">
+                        <svg width="20" height="20" fill="#fbbf24" viewBox="0 0 16 16">
+                            <path d="M.54 3.87L.5 3a2 2 0 0 1 2-2h3.672a2 2 0 0 1 1.414.586l.828.828A2 2 0 0 0 9.828 3h3.982a2 2 0 0 1 1.992 2.181l-.637 7A2 2 0 0 1 13.174 14H2.826a2 2 0 0 1-1.991-1.819l-.637-7a1.99 1.99 0 0 1 .342-1.31zM2.19 4a1 1 0 0 0-.996 1.09l.637 7a1 1 0 0 0 .995.91h10.348a1 1 0 0 0 .995-.91l.637-7A1 1 0 0 0 13.81 4H2.19z"/>
+                        </svg>
+                        <span>${folder}</span>
+                    </div>
+                    <div class="item-actions">
+                        <button class="action-btn" onclick="event.stopPropagation(); showDeleteConfirm('${folderPath}', 'folder')" title="Sil">
+                            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                                <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4L4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                            </svg>
+                        </button>
+                    </div>
+                `;
+                foldersList.appendChild(div);
+            });
+        } else {
+            foldersList.innerHTML = '<p style="color:#6b7280;font-size:14px;">Klasör bulunamadı</p>';
+        }
+    }
+
+    async function loadFiles(folder) {
+        const response = await fetch(`/FileManager/GetFiles?folder=${encodeURIComponent(folder)}`);
+        const result = await response.json();
+
+        const filesList = document.getElementById('filesList');
+        filesList.innerHTML = '';
+
+        if (result.success && result.files.length > 0) {
+            result.files.forEach(file => {
+                const filePath = folder ? `${folder}/${file}` : file;
+                const isImage = /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(file);
+                const isVideo = /\.(mp4|avi|mov|wmv|flv|mkv)$/i.test(file);
+                const isPdf = /\.pdf$/i.test(file);
+                const isExcel = /\.(xls|xlsx)$/i.test(file);
+                const isWord = /\.(doc|docx)$/i.test(file);
+
+                const div = document.createElement('div');
+                div.className = 'file-card';
+
+                let thumbContent = '';
+                if (isImage) {
+                    thumbContent = `<img src="/uploads/${filePath}" alt="${file}" />`;
+                } else if (isVideo) {
+                    thumbContent = `<svg width="40" height="40" fill="#f59e0b" viewBox="0 0 16 16"><path d="M6.79 5.093A.5.5 0 0 0 6 5.5v5a.5.5 0 0 0 .79.407l3.5-2.5a.5.5 0 0 0 0-.814l-3.5-2.5z"/><path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4zm15 0a1 1 0 0 0-1-1H2a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4z"/></svg>`;
+                } else if (isPdf) {
+                    thumbContent = `<svg width="40" height="40" fill="#ef4444" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M14 4.5V14a2 2 0 0 1-2 2h-1v-1h1a1 1 0 0 0 1-1V4.5h-2A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v9H2V2a2 2 0 0 1 2-2h5.5L14 4.5z"/><path fill-rule="evenodd" d="M1 7a.5.5 0 0 1 .5-.5h1.5a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H1.5A.5.5 0 0 1 1 10V7z"/></svg>`;
+                } else if (isExcel) {
+                    thumbContent = `<svg width="40" height="40" fill="#10b981" viewBox="0 0 16 16"><path d="M5.884 6.68a.5.5 0 1 0-.768.64L7.349 10l-2.233 2.68a.5.5 0 0 0 .768.64L8 10.781l2.116 2.54a.5.5 0 0 0 .768-.641L8.651 10l2.233-2.68a.5.5 0 0 0-.768-.64L8 9.219l-2.116-2.54z"/><path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/></svg>`;
+                } else if (isWord) {
+                    thumbContent = `<svg width="40" height="40" fill="#2563eb" viewBox="0 0 16 16"><path d="M5.485 6.879a.5.5 0 1 0-.97.242l1.5 6a.5.5 0 0 0 .967.01L8 9.402l1.018 3.73a.5.5 0 0 0 .967-.01l1.5-6a.5.5 0 0 0-.97-.242l-1.036 4.144-.997-3.655a.5.5 0 0 0-.964 0l-.997 3.655L5.485 6.88z"/><path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/></svg>`;
+                } else {
+                    thumbContent = `<svg width="40" height="40" fill="#6b7280" viewBox="0 0 16 16"><path d="M5 4a.5.5 0 0 0 0 1h6a.5.5 0 0 0 0-1H5zm-.5 2.5A.5.5 0 0 1 5 6h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5zM5 8a.5.5 0 0 0 0 1h6a.5.5 0 0 0 0-1H5zm0 2a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1H5z"/><path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2zm10-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1z"/></svg>`;
+                }
+
+                div.innerHTML = `
+                    <div class="file-thumb" ondblclick="selectFile('/uploads/${filePath}')">${thumbContent}</div>
+                    <div class="file-info">
+                        <div class="file-name" title="${file}">${file}</div>
+                        <div class="file-actions">
+                            <button class="action-btn-small btn-select" onclick="selectFile('/uploads/${filePath}')">Seç</button>
+                            ${isImage ? `<button class="action-btn-small btn-view" onclick="showImageViewer('${filePath}', '${file}')">Görüntüle</button>` : ''}
+                            ${isImage ? `<button class="action-btn-small" onclick="showImageActions('${filePath}')">Düzenle</button>` : ''}
+                            <button class="action-btn-small btn-delete" onclick="showDeleteConfirm('${filePath}', 'file')">Sil</button>
+                        </div>
+                    </div>
+                `;
+                filesList.appendChild(div);
+            });
+        } else {
+            filesList.innerHTML = '<p style="color:#6b7280;font-size:14px;">Dosya bulunamadı</p>';
+        }
+    }
+
+    function showImageViewer(filePath, fileName) {
+        const dialog = document.getElementById('imageViewerDialog');
+        const img = document.getElementById('imageViewerImage');
+        const title = document.getElementById('imageViewerTitle');
+        const dimensions = document.getElementById('imageViewerDimensions');
+        
+        title.textContent = fileName;
+        img.src = '/uploads/' + filePath;
+        
+        img.onload = function() {
+            dimensions.textContent = `Boyut: ${this.naturalWidth} × ${this.naturalHeight} piksel`;
+        };
+        
+        dialog.style.display = 'block';
+    }
+
+    function closeImageViewer() {
+        document.getElementById('imageViewerDialog').style.display = 'none';
+    }
+
+    function showCreateFolderDialog() {
+        // Alt klasör oluşturmayı engelle
+        if (currentFolder) {
+            alert('Alt klasör oluşturulamaz. Lütfen ana dizine dönün.');
+            return;
+        }
+        
+        document.getElementById('createFolderDialog').style.display = 'block';
+        document.getElementById('newFolderName').value = '';
+    }
+
+    function closeCreateFolderDialog() {
+        document.getElementById('createFolderDialog').style.display = 'none';
+    }
+
+    async function createFolder() {
+        const folderName = document.getElementById('newFolderName').value.trim();
+
+        if (!folderName) {
+            alert('Lütfen klasör adı girin');
+            return;
+        }
+
+        showLoading();
+
+        const formData = new FormData();
+        formData.append('folderName', folderName);
+        formData.append('parentFolder', currentFolder);
+
+        try {
+            const response = await fetch('/FileManager/CreateFolder', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                closeCreateFolderDialog();
+                await loadFolders(currentFolder);
+                showSuccessDialog('Klasör Oluşturuldu', `"${folderName}" klasörü başarıyla oluşturuldu.`);
+            } else {
+                alert('Hata: ' + result.message);
+            }
+        } finally {
+            hideLoading();
+        }
+    }
+
+    function showUploadDialog() {
+        document.getElementById('uploadDialog').style.display = 'block';
+        document.getElementById('fileInput').value = '';
+        selectedFiles = [];
+        updateFilePreview();
+    }
+
+    function closeUploadDialog() {
+        document.getElementById('uploadDialog').style.display = 'none';
+        selectedFiles = [];
+    }
+
+    // Drag & Drop functionality
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('drag-over');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('drag-over');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+
+        const files = Array.from(e.dataTransfer.files);
+        handleFileSelection(files);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        const files = Array.from(e.target.files);
+        handleFileSelection(files);
+    });
+
+    function handleFileSelection(files) {
+        const allowedExtensions = [
+            '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp',
+            '.mp4', '.avi', '.mov', '.wmv', '.flv', '.mkv',
+            '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+            '.txt', '.csv'
+        ];
+
+        files.forEach(file => {
+            const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+            if (allowedExtensions.includes(ext)) {
+                selectedFiles.push(file);
+            } else {
+                alert(`${file.name} desteklenmeyen bir dosya türü`);
+            }
+        });
+
+        updateFilePreview();
+    }
+
+    function updateFilePreview() {
+        const preview = document.getElementById('filePreview');
+        preview.innerHTML = '';
+
+        selectedFiles.forEach((file, index) => {
+            const div = document.createElement('div');
+            div.className = 'preview-item';
+
+            const isImage = file.type.startsWith('image/');
+
+            if (isImage) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    div.innerHTML = `
+                        <button class="preview-remove" onclick="removeFile(${index})">×</button>
+                        <div class="preview-thumb"><img src="${e.target.result}" /></div>
+                        <div class="preview-name">${file.name}</div>
+                    `;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                div.innerHTML = `
+                    <button class="preview-remove" onclick="removeFile(${index})">×</button>
+                    <div class="preview-thumb">
+                        <svg width="30" height="30" fill="#6b7280" viewBox="0 0 16 16">
+                            <path d="M5 4a.5.5 0 0 0 0 1h6a.5.5 0 0 0 0-1H5zm-.5 2.5A.5.5 0 0 1 5 6h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5zM5 8a.5.5 0 0 0 0 1h6a.5.5 0 0 0 0-1H5zm0 2a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1H5z"/>
+                        </svg>
+                    </div>
+                    <div class="preview-name">${file.name}</div>
+                `;
+            }
+
+            preview.appendChild(div);
+        });
+    }
+
+    function removeFile(index) {
+        selectedFiles.splice(index, 1);
+        updateFilePreview();
+    }
+
+    async function uploadFiles() {
+        if (selectedFiles.length === 0) {
+            alert('Lütfen dosya seçin');
+            return;
+        }
+
+        showLoading();
+
+        const formData = new FormData();
+        selectedFiles.forEach(file => {
+            formData.append('files', file);
+        });
+        formData.append('folder', currentFolder);
+
+        try {
+            const response = await fetch('/FileManager/Upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                closeUploadDialog();
+                await loadFiles(currentFolder);
+
+                const failedFiles = result.files.filter(f => !f.success);
+                if (failedFiles.length > 0) {
+                    alert('Bazı dosyalar yüklenemedi:\n' + failedFiles.map(f => f.fileName).join('\n'));
+                } else {
+                    showSuccessDialog('Dosyalar Yüklendi', `${result.files.length} dosya başarıyla yüklendi.`);
+                }
+            } else {
+                alert('Hata: ' + result.message);
+            }
+        } finally {
+            hideLoading();
+        }
+    }
+
+    function showDeleteConfirm(path, type) {
+        deleteTarget = path;
+        deleteType = type;
+
+        const message = type === 'folder'
+            ? 'Bu klasörü ve içindeki tüm dosyaları silmek istediğinizden emin misiniz?'
+            : 'Bu dosyayı silmek istediğinizden emin misiniz?';
+
+        document.getElementById('deleteConfirmMessage').textContent = message;
+        document.getElementById('deleteConfirmDialog').style.display = 'block';
+    }
+
+    function closeDeleteConfirmDialog() {
+        document.getElementById('deleteConfirmDialog').style.display = 'none';
+        deleteTarget = null;
+        deleteType = null;
+    }
+
+    async function confirmDelete() {
+        if (!deleteTarget || !deleteType) return;
+
+        showLoading();
+        closeDeleteConfirmDialog();
+
+        const formData = new FormData();
+
+        try {
+            if (deleteType === 'file') {
+                formData.append('filePath', deleteTarget);
+                const response = await fetch('/FileManager/Delete', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    await loadFiles(currentFolder);
+                    showSuccessDialog('Dosya Silindi', 'Dosya başarıyla silindi.');
+                } else {
+                    alert('Hata: ' + result.message);
+                }
+            } else if (deleteType === 'folder') {
+                formData.append('folderPath', deleteTarget);
+                const response = await fetch('/FileManager/DeleteFolder', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    await loadFolders(currentFolder);
+                    showSuccessDialog('Klasör Silindi', 'Klasör başarıyla silindi.');
+                } else {
+                    alert('Hata: ' + result.message);
+                }
+            }
+        } finally {
+            hideLoading();
+        }
+    }
+
+    function showImageActions(filePath) {
+        document.getElementById('imageActionDialog').style.display = 'block';
+        document.getElementById('currentImagePath').value = filePath;
+
+        const img = document.getElementById('editorImage');
+        img.src = '/uploads/' + filePath;
+        img.onload = function() {
+            document.getElementById('resizeWidth').value = img.naturalWidth;
+            document.getElementById('resizeHeight').value = img.naturalHeight;
+        };
+    }
+
+    function closeImageActionDialog() {
+        document.getElementById('imageActionDialog').style.display = 'none';
+        cancelCrop();
+    }
+
+    let cropData = null;
+    let isDragging = false;
+    let isResizing = false;
+    let dragStart = { x: 0, y: 0 };
+    let resizeHandle = null;
+
+    function startCrop() {
+        const img = document.getElementById('editorImage');
+        const wrapper = img.parentElement;
+        const cropBox = document.getElementById('cropBox');
+
+        const imgRect = img.getBoundingClientRect();
+        const wrapperRect = wrapper.getBoundingClientRect();
+
+        const left = imgRect.left - wrapperRect.left;
+        const top = imgRect.top - wrapperRect.top;
+        const width = Math.min(200, img.clientWidth);
+        const height = Math.min(200, img.clientHeight);
+
+        cropBox.style.left = left + 'px';
+        cropBox.style.top = top + 'px';
+        cropBox.style.width = width + 'px';
+        cropBox.style.height = height + 'px';
+        cropBox.style.display = 'block';
+
+        document.getElementById('startCropBtn').style.display = 'none';
+        document.getElementById('applyCropBtn').style.display = 'block';
+        document.getElementById('cancelCropBtn').style.display = 'block';
+
+        setupCropHandlers();
+    }
+
+    function setupCropHandlers() {
+        const cropBox = document.getElementById('cropBox');
+        const handles = cropBox.querySelectorAll('.crop-handle');
+
+        cropBox.onmousedown = function(e) {
+            if (e.target.classList.contains('crop-handle')) {
+                isResizing = true;
+                resizeHandle = e.target.dataset.position;
+            } else {
+                isDragging = true;
+            }
+            dragStart = { x: e.clientX, y: e.clientY };
+            e.preventDefault();
+        };
+
+        document.onmousemove = function(e) {
+            if (!isDragging && !isResizing) return;
+
+            const dx = e.clientX - dragStart.x;
+            const dy = e.clientY - dragStart.y;
+
+            const cropBox = document.getElementById('cropBox');
+            const rect = cropBox.getBoundingClientRect();
+
+            if (isDragging) {
+                cropBox.style.left = (rect.left - cropBox.offsetParent.getBoundingClientRect().left + dx) + 'px';
+                cropBox.style.top = (rect.top - cropBox.offsetParent.getBoundingClientRect().top + dy) + 'px';
+            } else if (isResizing) {
+                const parentRect = cropBox.offsetParent.getBoundingClientRect();
+                let newWidth = rect.width;
+                let newHeight = rect.height;
+                let newLeft = rect.left - parentRect.left;
+                let newTop = rect.top - parentRect.top;
+
+                if (resizeHandle.includes('e')) newWidth += dx;
+                if (resizeHandle.includes('w')) { newWidth -= dx; newLeft += dx; }
+                if (resizeHandle.includes('s')) newHeight += dy;
+                if (resizeHandle.includes('n')) { newHeight -= dy; newTop += dy; }
+
+                if (newWidth > 20 && newHeight > 20) {
+                    cropBox.style.width = newWidth + 'px';
+                    cropBox.style.height = newHeight + 'px';
+                    if (resizeHandle.includes('w') || resizeHandle.includes('n')) {
+                        cropBox.style.left = newLeft + 'px';
+                        cropBox.style.top = newTop + 'px';
+                    }
+                }
+            }
+
+            dragStart = { x: e.clientX, y: e.clientY };
+        };
+
+        document.onmouseup = function() {
+            isDragging = false;
+            isResizing = false;
+            resizeHandle = null;
+        };
+    }
+
+    function cancelCrop() {
+        const cropBox = document.getElementById('cropBox');
+        cropBox.style.display = 'none';
+        document.getElementById('startCropBtn').style.display = 'block';
+        document.getElementById('applyCropBtn').style.display = 'none';
+        document.getElementById('cancelCropBtn').style.display = 'none';
+        isDragging = false;
+        isResizing = false;
+    }
+
+    async function applyCrop() {
+        showLoading();
+        
+        const cropBox = document.getElementById('cropBox');
+        const img = document.getElementById('editorImage');
+        const imgRect = img.getBoundingClientRect();
+        const cropRect = cropBox.getBoundingClientRect();
+
+        const scaleX = img.naturalWidth / img.clientWidth;
+        const scaleY = img.naturalHeight / img.clientHeight;
+
+        const x = Math.round((cropRect.left - imgRect.left) * scaleX);
+        const y = Math.round((cropRect.top - imgRect.top) * scaleY);
+        const width = Math.round(cropRect.width * scaleX);
+        const height = Math.round(cropRect.height * scaleY);
+
+        const filePath = document.getElementById('currentImagePath').value;
+        const formData = new FormData();
+        formData.append('filePath', filePath);
+        formData.append('x', x);
+        formData.append('y', y);
+        formData.append('width', width);
+        formData.append('height', height);
+
+        try {
+            const response = await fetch('/FileManager/Crop', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                closeImageActionDialog();
+                await loadFiles(currentFolder);
+                showSuccessDialog('Görsel Kırpıldı', 'Görsel başarıyla kırpıldı ve kaydedildi.');
+            } else {
+                alert('Hata: ' + result.message);
+            }
+        } finally {
+            hideLoading();
+        }
+    }
+
+    async function applyResize() {
+        const width = document.getElementById('resizeWidth').value;
+        const height = document.getElementById('resizeHeight').value;
+
+        if (!width || !height) {
+            alert('Lütfen genişlik ve yükseklik değerlerini girin');
+            return;
+        }
+
+        showLoading();
+
+        const filePath = document.getElementById('currentImagePath').value;
+        const formData = new FormData();
+        formData.append('filePath', filePath);
+        formData.append('width', width);
+        formData.append('height', height);
+
+        try {
+            const response = await fetch('/FileManager/Resize', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                closeImageActionDialog();
+                await loadFiles(currentFolder);
+                showSuccessDialog('Görsel Boyutlandırıldı', `Görsel ${width}×${height} boyutuna getirildi.`);
+            } else {
+                alert('Hata: ' + result.message);
+            }
+        } finally {
+            hideLoading();
+        }
+    }
+</script>
