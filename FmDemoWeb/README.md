@@ -2,11 +2,12 @@
 
 ## 📋 Yapılan İyileştirmeler
 
-### 1. ✅ Loading Ekranı Eklendi
+### 1. ✅ Loading Ekranı Eklendi (1 Saniye Minimum)
 **Neden Yapıldı:** Kullanıcılar klasörlere tıkladığında işlemin yapılıp yapılmadığını anlamıyordu.
 
 **Nasıl Çalışıyor:**
 - Her asenkron işlem (klasör açma, dosya yükleme, silme, kırpma, boyutlandırma) sırasında loading ekranı gösterilir
+- Klasör navigasyonunda minimum 1 saniye loading süresi eklendi (kullanıcı deneyimi için)
 - Kullanıcıya görsel geri bildirim sağlanır
 - Animasyonlu spinner ile profesyonel görünüm
 
@@ -19,6 +20,20 @@ function showLoading() {
 function hideLoading() {
     document.getElementById('loadingOverlay').style.display = 'none';
 }
+
+// Klasör navigasyonunda 1 saniye delay
+async function navigateToFolder(folder) {
+    showLoading();
+    try {
+        const [_, foldersResult, filesResult] = await Promise.all([
+            new Promise(resolve => setTimeout(resolve, 1000)), // 1 saniye delay
+            loadFolders(folder),
+            loadFiles(folder)
+        ]);
+    } finally {
+        hideLoading();
+    }
+}
 ```
 
 **CSS Özellikleri:**
@@ -29,34 +44,30 @@ function hideLoading() {
 
 ---
 
-### 2. ✅ Alt Klasör Oluşturma Engellendi
-**Neden Yapıldı:** Kullanıcı sadece ana dizinde klasör oluşturabilsin, alt klasörlerde karmaşıklık olmasın.
+### 2. ✅ Alt Klasör Desteği Eklendi
+**Neden Yapıldı:** Kullanıcıların daha organize bir klasör yapısı oluşturabilmesi için.
 
 **Nasıl Çalışıyor:**
-- `showCreateFolderDialog()` fonksiyonunda kontrol eklendi
-- Eğer `currentFolder` boş değilse (yani bir alt klasördeyse) uyarı verilir
-- Kullanıcı ana dizine dönmesi için bilgilendirilir
+- Herhangi bir klasör içindeyken "Yeni Klasör" butonu ile alt klasör oluşturulabilir
+- Sınırsız derinlikte klasör yapısı desteklenir
+- Breadcrumb navigasyonu ile kolayca üst klasörlere dönülebilir
 
-**Frontend Kontrolü:**
+**Kod Özellikleri:**
 ```javascript
 function showCreateFolderDialog() {
-    if (currentFolder) {
-        alert('Alt klasör oluşturulamaz. Lütfen ana dizine dönün.');
-        return;
-    }
-    // ... dialog göster
+    // Alt klasör oluşturma artık izinli
+    document.getElementById('createFolderDialog').style.display = 'block';
+    document.getElementById('newFolderName').value = '';
 }
 ```
 
-**Backend Kontrolü (Controller):**
+**Backend:**
 ```csharp
-if (!string.IsNullOrEmpty(parentFolder))
-{
-    return Json(new { 
-        success = false, 
-        message = "Alt klasör oluşturulamaz. Sadece ana dizinde klasör oluşturabilirsiniz." 
-    });
-}
+var folderPath = string.IsNullOrEmpty(parentFolder)
+    ? folderName
+    : System.IO.Path.Combine(parentFolder, folderName);
+
+await _fileManager.CreateFolderAsync(folderPath);
 ```
 
 ---
@@ -287,9 +298,9 @@ openFileManager();
 
 ## 📝 Notlar
 
-- **Alt klasör oluşturma engellendi:** Kullanıcı sadece ana dizinde klasör oluşturabilir
+- **Alt klasör desteği:** Sınırsız derinlikte klasör yapısı oluşturulabilir
 - **Seçili klasör vurgulanır:** Mavi gradient ile smooth geçiş
-- **Loading ekranı:** Tüm asenkron işlemlerde gösterilir
+- **Loading ekranı:** Tüm asenkron işlemlerde gösterilir (klasör navigasyonunda minimum 1 saniye)
 - **Success dialog:** Modern ve kullanıcı dostu bildirimler
 - **Görsel görüntüleyici:** Gerçek boyut bilgisi ile tam ekran görüntüleme
 

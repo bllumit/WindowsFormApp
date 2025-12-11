@@ -109,12 +109,7 @@ namespace FmDemoWeb.Controllers
         {
             try
             {
-                // Alt klasör oluşturmayı engelle - sadece ana dizinde klasör oluşturulabilir
-                if (!string.IsNullOrEmpty(parentFolder))
-                {
-                    return Json(new { success = false, message = "Alt klasör oluşturulamaz. Sadece ana dizinde klasör oluşturabilirsiniz." });
-                }
-
+                // Alt klasör oluşturma artık izinli
                 var folderPath = string.IsNullOrEmpty(parentFolder)
                     ? folderName
                     : System.IO.Path.Combine(parentFolder, folderName);

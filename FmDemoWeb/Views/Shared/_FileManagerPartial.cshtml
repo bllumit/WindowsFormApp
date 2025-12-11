@@ -1070,7 +1070,9 @@
         currentFolder = folder;
         
         try {
-            await Promise.all([
+            // Kullanıcının loading ekranını görebilmesi için 1 saniye bekleme
+            const [_, foldersResult, filesResult] = await Promise.all([
+                new Promise(resolve => setTimeout(resolve, 1000)),
                 loadFolders(folder),
                 loadFiles(folder)
             ]);
@@ -1211,12 +1213,7 @@
     }
 
     function showCreateFolderDialog() {
-        // Alt klasör oluşturmayı engelle
-        if (currentFolder) {
-            alert('Alt klasör oluşturulamaz. Lütfen ana dizine dönün.');
-            return;
-        }
-        
+        // Alt klasör oluşturma artık izinli
         document.getElementById('createFolderDialog').style.display = 'block';
         document.getElementById('newFolderName').value = '';
     }

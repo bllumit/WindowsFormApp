@@ -146,11 +146,11 @@ app.UseStaticFiles();
 2. Tarayıcıda açın: `http://localhost:5000`
 3. "Dosya Yöneticisini Aç" butonuna tıklayın
 4. Özellikler:
-   - ✅ Klasör oluşturma (sadece ana dizinde)
+   - ✅ Klasör oluşturma (alt klasör desteği)
    - ✅ Dosya yükleme (drag & drop)
    - ✅ Görsel düzenleme (kırpma, boyutlandırma)
    - ✅ Görsel görüntüleme (gerçek boyut)
-   - ✅ Loading ekranı
+   - ✅ Loading ekranı (1 saniye minimum)
    - ✅ Success dialog
    - ✅ Smooth folder selection
 
